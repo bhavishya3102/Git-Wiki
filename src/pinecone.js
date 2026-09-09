@@ -38,7 +38,7 @@ async function embed(texts, inputType) {
 export async function upsertText(id, text) {
   const index = await getIndex();
   const [values] = await embed([text], 'passage');
-  await index.upsert([{ id, values, metadata: { text } }]);
+  await index.upsert({ records: [{ id, values, metadata: { text } }] });
   return { id };
 }
 
@@ -62,12 +62,12 @@ export async function upsertChunks(chunks, metadata = {}) {
     chunks.map((c) => c.text),
     'passage'
   );
-  await index.upsert(
-    chunks.map((c, i) => ({
+  await index.upsert({
+    records: chunks.map((c, i) => ({
       id: c.id,
       values: values[i],
       metadata: { ...metadata, source: c.source, text: c.text },
-    }))
-  );
+    })),
+  });
   return { upserted: chunks.length };
 }
