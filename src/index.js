@@ -19,6 +19,15 @@ app.post('/docs', async (req, res) => {
   res.status(202).json({ queued: id });
 });
 
+// Kick off a full GitHub repo index in the background.
+app.post('/repos', async (req, res) => {
+  const { url, branch } = req.body ?? {};
+  if (!url) return res.status(400).json({ error: 'url is required' });
+
+  await inngest.send({ name: 'repo/index.requested', data: { url, branch } });
+  res.status(202).json({ queued: url });
+});
+
 app.get('/search', async (req, res, next) => {
   const { q, topK } = req.query;
   if (!q) return res.status(400).json({ error: 'q is required' });

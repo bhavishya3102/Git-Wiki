@@ -48,3 +48,21 @@ export async function search(query, topK = 3) {
   const { matches } = await index.query({ vector: values, topK, includeMetadata: true });
   return matches;
 }
+
+// Embeds and upserts a batch of chunks. Keep batches under the embedding
+// model's 96-input limit.
+export async function upsertChunks(chunks, metadata = {}) {
+  const index = await getIndex();
+  const values = await embed(
+    chunks.map((c) => c.text),
+    'passage'
+  );
+  await index.upsert(
+    chunks.map((c, i) => ({
+      id: c.id,
+      values: values[i],
+      metadata: { ...metadata, source: c.source, text: c.text },
+    }))
+  );
+  return { upserted: chunks.length };
+}
