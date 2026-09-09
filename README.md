@@ -26,6 +26,7 @@ npm run inngest   # the Inngest Dev Server on :8288
 | `POST /docs` | `{ "id", "text" }` — emits a `doc/created` event |
 | `POST /repos` | `{ "url", "branch" }` — emits a `repo/index.requested` event |
 | `GET /search?q=...&topK=3` | Embeds the query and searches Pinecone |
+| `POST /ask` | `{ "question", "repo" }` — answers the question from the indexed repo |
 | `/api/inngest` | Where Inngest discovers and runs the functions |
 
 `POST /docs` returns immediately; the `index-document` Inngest function embeds
@@ -60,3 +61,26 @@ GitHub rate limit (60 requests/hour, which a mid-size repo will exhaust).
 Note: the loader returns every chunk from a single step, and Inngest caps step
 output at 4MB. Large repos need the loading split across steps (e.g. one event
 per directory).
+
+## Asking questions about a repo
+
+`POST /ask` is synchronous — retrieval and the answer come back in one response.
+It embeds the question, pulls the 6 closest chunks from Pinecone (filtered to
+`repo` when given), and asks the model to answer from those chunks only,
+citing them as `[1]`, `[2]`. If the chunks do not contain the answer, it says
+so rather than guessing.
+
+```bash
+curl -X POST localhost:3000/ask -H 'content-type: application/json' \
+  -d '{"question":"How does the repo get indexed?","repo":"https://github.com/octocat/Hello-World"}'
+```
+
+```json
+{
+  "answer": "...",
+  "sources": [{ "source": "src/inngest/functions.js", "score": 0.82 }]
+}
+```
+
+Needs `OPENAI_API_KEY`. `OPENAI_MODEL` defaults to `gpt-4o-mini`.
+Omit `repo` to search across everything indexed.

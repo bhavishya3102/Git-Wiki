@@ -4,6 +4,7 @@ import { serve } from 'inngest/express';
 import { inngest } from './inngest/client.js';
 import { functions } from './inngest/functions.js';
 import { search } from './pinecone.js';
+import { ask } from './rag.js';
 
 const app = express();
 app.use(express.json());
@@ -39,7 +40,25 @@ app.get('/search', async (req, res, next) => {
   }
 });
 
+// Answers a question using only the indexed repo content.
+app.post('/ask', async (req, res, next) => {
+  const { question, repo } = req.body ?? {};
+  if (!question) return res.status(400).json({ error: 'question is required' });
+
+  try {
+    res.json(await ask(question, { repo }));
+  } catch (err) {
+    next(err);
+  }
+});
+
 app.use('/api/inngest', serve({ client: inngest, functions }));
+
+// Keep failures as JSON rather than Express's default HTML page.
+app.use((err, req, res, next) => {
+  console.error(err);
+  res.status(500).json({ error: err.message });
+});
 
 const port = process.env.PORT || 3000;
 app.listen(port, () => console.log(`listening on http://localhost:${port}`));

@@ -42,10 +42,15 @@ export async function upsertText(id, text) {
   return { id };
 }
 
-export async function search(query, topK = 3) {
+export async function search(query, topK = 3, filter) {
   const index = await getIndex();
   const [values] = await embed([query], 'query');
-  const { matches } = await index.query({ vector: values, topK, includeMetadata: true });
+  const { matches } = await index.query({
+    vector: values,
+    topK,
+    includeMetadata: true,
+    ...(filter && { filter }),
+  });
   return matches;
 }
 
