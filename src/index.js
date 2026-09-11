@@ -30,11 +30,12 @@ app.post('/repos', async (req, res) => {
 });
 
 app.get('/search', async (req, res, next) => {
-  const { q, topK } = req.query;
+   const { q, topK, repo } = req.query;
   if (!q) return res.status(400).json({ error: 'q is required' });
 
   try {
-    res.json({ matches: await search(q, Number(topK) || 3) });
+    const filter = repo ? { repo: { $eq: repo } } : undefined;
+    res.json({ matches: await search(q, Number(topK) || 3, filter) });
   } catch (err) {
     next(err);
   }

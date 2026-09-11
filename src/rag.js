@@ -26,13 +26,14 @@ export async function ask(question, { repo, topK = 6 } = {}) {
     { role: 'user', content: `Context:\n${context}\n\nQuestion: ${question}` },
   ]);
 
-  // Several chunks often come from one file; show each file once.
-  const sources = new Map();
-  for (const m of matches) {
-    if (!sources.has(m.metadata.source)) {
-      sources.set(m.metadata.source, { source: m.metadata.source, score: m.score });
-    }
-  }
+  // Keep one entry per cited chunk so `[n]` in the answer lines up with
+  // sources[n - 1], and carry the passage so the UI can show what was cited.
+  const sources = matches.map((m, i) => ({
+    n: i + 1,
+    source: m.metadata.source,
+    score: m.score,
+    text: m.metadata.text,
+  }));
 
-  return { answer: reply.text, sources: [...sources.values()] };
+  return { answer: reply.text, sources };
 }

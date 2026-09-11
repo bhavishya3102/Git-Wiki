@@ -1,0 +1,222 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT,WONK@0,9..144,300..900,0..100,0..1;1,9..144,300..900,0..100,0..1&family=Newsreader:ital,opsz,wght@0,6..72,200..800;1,6..72,200..800&family=IBM+Plex+Mono:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap');
+@import "tailwindcss";
+
+@custom-variant dark (&:is(.dark *));
+
+/* ── The Repository Archive ───────────────────────────────────────────
+   Light  : aged paper, ink, oxblood rubrication, verdigris marginalia
+   Dark   : the same desk after hours, under a warm reading lamp
+   ------------------------------------------------------------------ */
+:root {
+  --radius: 2px;
+
+  --background: #ece5d6;
+  --foreground: #17130f;
+  --card: #f6f1e7;
+  --card-foreground: #17130f;
+  --popover: #f6f1e7;
+  --popover-foreground: #17130f;
+  --primary: #8e2b1b;
+  --primary-foreground: #fbf7ef;
+  --secondary: #e0d7c4;
+  --secondary-foreground: #2a231c;
+  --muted: #e0d7c4;
+  --muted-foreground: #6b6357;
+  --accent: #3d5c51;
+  --accent-foreground: #f6f1e7;
+  --destructive: #a33a22;
+  --destructive-foreground: #fbf7ef;
+  --border: #d3c7ae;
+  --input: #d3c7ae;
+  --ring: #8e2b1b;
+
+  --rule: #c9bca0;
+  --grain-opacity: 0.045;
+  --grain-blend: multiply;
+}
+
+.dark {
+  --background: #14110d;
+  --foreground: #ece3d2;
+  --card: #1b1712;
+  --card-foreground: #ece3d2;
+  --popover: #1b1712;
+  --popover-foreground: #ece3d2;
+  --primary: #d4674c;
+  --primary-foreground: #14110d;
+  --secondary: #2a241d;
+  --secondary-foreground: #ece3d2;
+  --muted: #26211a;
+  --muted-foreground: #9a8f7f;
+  --accent: #83ab97;
+  --accent-foreground: #14110d;
+  --destructive: #d4674c;
+  --destructive-foreground: #14110d;
+  --border: #322b22;
+  --input: #322b22;
+  --ring: #d4674c;
+
+  --rule: #3d3428;
+  --grain-opacity: 0.05;
+  --grain-blend: overlay;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-rule: var(--rule);
+
+  --font-display: 'Fraunces', 'Iowan Old Style', Georgia, serif;
+  --font-body: 'Newsreader', Georgia, 'Times New Roman', serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+
+  --radius-sm: 1px;
+  --radius-md: 2px;
+  --radius-lg: 3px;
+  --radius-xl: 4px;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/40;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-background text-foreground font-body antialiased;
+    font-optical-sizing: auto;
+    /* faint ruled paper, like a ledger seen through the sheet */
+    background-image: repeating-linear-gradient(
+      to bottom,
+      transparent 0,
+      transparent 31px,
+      color-mix(in srgb, var(--rule) 17%, transparent) 31px,
+      color-mix(in srgb, var(--rule) 17%, transparent) 32px
+    );
+  }
+
+  /* paper grain, laid over everything but never in the way */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    pointer-events: none;
+    opacity: var(--grain-opacity);
+    mix-blend-mode: var(--grain-blend);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  ::selection {
+    background: color-mix(in srgb, var(--primary) 22%, transparent);
+    color: var(--foreground);
+  }
+
+  /* a thin, unobtrusive scrollbar that matches the paper */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: color-mix(in srgb, var(--rule) 70%, transparent);
+    border: 3px solid var(--background);
+    border-radius: 99px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--muted-foreground);
+  }
+}
+
+@layer components {
+  /* small caps label, the voice of a card catalogue */
+  .label-cat {
+    @apply font-mono text-[0.6875rem] uppercase tracking-[0.2em] text-muted-foreground;
+  }
+
+  /* rubricated drop cap on the first answer paragraph */
+  .prose-archive > p:first-of-type::first-letter {
+    @apply font-display text-primary;
+    float: left;
+    font-size: 3.6rem;
+    line-height: 0.82;
+    padding: 0.08em 0.12em 0 0;
+    font-weight: 600;
+  }
+
+  .prose-archive p {
+    @apply text-[1.0625rem] leading-[1.75] text-foreground/90;
+  }
+
+  .prose-archive p + p {
+    @apply mt-[0.9em];
+  }
+
+  .prose-archive code {
+    @apply font-mono text-[0.85em] bg-muted/70 px-1 py-px rounded-sm;
+  }
+
+  .prose-archive pre {
+    @apply font-mono text-[0.8125rem] leading-relaxed bg-foreground/[0.04] dark:bg-foreground/[0.06]
+           border border-border/70 p-3 my-3 overflow-x-auto;
+  }
+
+  .prose-archive pre code {
+    @apply bg-transparent p-0;
+  }
+
+  .prose-archive ol,
+  .prose-archive ul {
+    @apply my-3 pl-5 space-y-1.5 text-[1.0625rem] leading-[1.7] text-foreground/90;
+  }
+  .prose-archive ol { @apply list-decimal; }
+  .prose-archive ul { @apply list-disc; }
+}
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: none; }
+}
+
+@keyframes draw-rule {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+
+.animate-rise {
+  animation: rise 0.62s cubic-bezier(0.2, 0.7, 0.2, 1) backwards;
+}
+
+.animate-draw {
+  transform-origin: left;
+  animation: draw-rule 0.9s cubic-bezier(0.2, 0.7, 0.2, 1) backwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-rise,
+  .animate-draw {
+    animation: none;
+  }
+}

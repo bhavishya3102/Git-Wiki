@@ -84,3 +84,28 @@ curl -X POST localhost:3000/ask -H 'content-type: application/json' \
 
 Needs `OPENAI_API_KEY`. `OPENAI_MODEL` defaults to `gpt-4o-mini`.
 Omit `repo` to search across everything indexed.
+
+## The reading room (frontend)
+
+A React + shadcn/ui app in [`web/`](web). Three processes:
+
+```bash
+npm run dev       # Express API on :3000
+npm run inngest   # Inngest Dev Server on :8288
+npm run web       # the UI on :5173
+```
+
+Vite proxies `/api/*` to the Express server, so there is no CORS setup in dev.
+Deploying the UI separately means adding CORS to the API.
+
+Shelve a repository in the left rail, select it, and ask. Every `[n]` in the
+answer is a live reference: hover it and the cited passage lifts in the margin,
+click it and the margin scrolls to it. The catalogue lives in `localStorage`,
+so it is per-browser, not shared.
+
+Two API changes came with it:
+
+- `GET /search` accepts `repo` to filter by repository, which lets the UI check
+  whether indexing has finished without spending an LLM call.
+- `POST /ask` returns one `sources` entry per cited chunk (`{ n, source, score,
+  text }`) instead of one per file, so `[n]` lines up with `sources[n - 1]`.
