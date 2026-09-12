@@ -2,6 +2,7 @@ import { GithubRepoLoader } from '@langchain/community/document_loaders/web/gith
 import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
 import { inngest } from './client.js';
 import { upsertText, upsertChunks } from '../pinecone.js';
+import { markRepoReady } from '../db.js';
 
 // Triggered by `doc/created` events; indexes the document in Pinecone.
 export const indexDocument = inngest.createFunction(
@@ -62,6 +63,8 @@ export const indexRepo = inngest.createFunction(
       const batch = chunks.slice(i, i + UPSERT_BATCH);
       await step.run(`upsert-${i}`, () => upsertChunks(batch, { repo: url, branch }));
     }
+
+    await step.run('mark-ready', () => markRepoReady(url));
 
     return { repo: url, branch, chunks: chunks.length };
   }

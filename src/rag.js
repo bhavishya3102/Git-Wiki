@@ -9,8 +9,9 @@ Cite the chunks you used as [1], [2], etc.
 If the context does not contain the answer, say so plainly instead of guessing.`;
 
 // Retrieves the most relevant chunks and asks the model to answer from them.
-export async function ask(question, { repo, topK = 6 } = {}) {
-  const matches = await search(question, topK, repo ? { repo: { $eq: repo } } : undefined);
+// `filter` is a Pinecone metadata filter, e.g. { repo: { $eq: url } }.
+export async function ask(question, { filter, topK = 6 } = {}) {
+  const matches = await search(question, topK, filter);
 
   if (matches.length === 0) {
     return { answer: 'Nothing is indexed for that repo yet.', sources: [] };

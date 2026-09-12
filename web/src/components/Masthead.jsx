@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useTheme } from 'next-themes';
-import { MoonStar, Sun } from 'lucide-react';
+import { LogOut, MoonStar, Sun } from 'lucide-react';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/utils';
 
@@ -22,7 +22,7 @@ function StatusLamp({ online }) {
   );
 }
 
-export function Masthead({ volumes }) {
+export function Masthead({ volumes, user, onSignOut }) {
   const [online, setOnline] = useState(null);
   const { resolvedTheme, setTheme } = useTheme();
 
@@ -60,11 +60,34 @@ export function Masthead({ volumes }) {
           </div>
 
           <div className="flex items-center gap-5 pb-1">
-            <span className="hidden label-cat sm:inline">
-              {volumes} {volumes === 1 ? 'volume' : 'volumes'} shelved
-            </span>
-            <span className="hidden h-4 w-px bg-rule sm:block" />
+            {user && (
+              <>
+                <span className="hidden label-cat sm:inline">
+                  {volumes} {volumes === 1 ? 'volume' : 'volumes'} shelved
+                </span>
+                <span className="hidden h-4 w-px bg-rule sm:block" />
+              </>
+            )}
             <StatusLamp online={online} />
+            {user && (
+              <span className="flex items-center gap-2">
+                <img src={user.avatar_url} alt="" className="size-8 border border-rule/80" />
+                <span className="hidden font-mono text-[0.6875rem] text-muted-foreground md:inline">
+                  {user.login}
+                </span>
+                <button
+                  type="button"
+                  onClick={onSignOut}
+                  aria-label="Sign out"
+                  title="Sign out"
+                  className="grid size-8 place-items-center border border-rule/80 text-muted-foreground
+                             transition-colors hover:border-primary hover:text-primary
+                             focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                >
+                  <LogOut className="size-[15px]" strokeWidth={1.5} />
+                </button>
+              </span>
+            )}
             <button
               type="button"
               onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}

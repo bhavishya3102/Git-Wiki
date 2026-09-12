@@ -1,32 +1,48 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { BookMarked, Check, Loader2, Plus, RefreshCw, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { api, parseRepo } from '@/lib/api';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { api } from '@/lib/api';
 import { cn } from '@/lib/utils';
 
 function AccessionForm({ onAccession }) {
+  // null while GitHub is being asked for the user's public repos.
+  const [options, setOptions] = useState(null);
   const [url, setUrl] = useState('');
-  const [branch, setBranch] = useState('main');
+  const [branch, setBranch] = useState('');
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    api
+      .githubRepos()
+      .then(({ repos }) => setOptions(repos))
+      .catch((error) => {
+        setOptions([]);
+        toast.error('Could not list your GitHub repositories', { description: error.message });
+      });
+  }, []);
+
+  function choose(value) {
+    setUrl(value);
+    setBranch(options.find((r) => r.url === value)?.branch ?? '');
+  }
 
   async function submit(event) {
     event.preventDefault();
-    const repo = parseRepo(url);
-    if (!repo) {
-      toast.error('That does not look like a GitHub repository URL.', {
-        description: 'Expected https://github.com/owner/name',
-      });
+    if (!url) {
+      toast.error('Pick one of your repositories first.');
       return;
     }
 
     setBusy(true);
     try {
-      await api.indexRepo({ url: repo.url, branch: branch.trim() || 'main' });
-      onAccession({ ...repo, branch: branch.trim() || 'main' });
+      const { repo } = await api.indexRepo({ url, branch: branch.trim() || undefined });
+      onAccession(repo);
       setUrl('');
+      setBranch('');
       toast.success('Sent to the bindery', {
         description: `${repo.owner}/${repo.name} is being read and shelved.`,
       });
@@ -43,15 +59,31 @@ function AccessionForm({ onAccession }) {
         Accession a repository
       </label>
 
-      <Input
-        id="repo-url"
-        value={url}
-        onChange={(e) => setUrl(e.target.value)}
-        placeholder="https://github.com/owner/name"
-        spellCheck={false}
-        className="h-10 rounded-none border-0 border-b border-rule bg-transparent px-0 font-mono text-[0.8125rem]
-                   shadow-none focus-visible:border-primary focus-visible:ring-0 dark:bg-transparent"
-      />
+      <Select value={url} onValueChange={choose} disabled={!options?.length}>
+        <SelectTrigger
+          id="repo-url"
+          className="h-10 w-full rounded-none border-0 border-b border-rule bg-transparent px-0 font-mono
+                     text-[0.8125rem] shadow-none focus-visible:border-primary focus-visible:ring-0
+                     dark:bg-transparent dark:hover:bg-transparent"
+        >
+          <SelectValue
+            placeholder={
+              options === null
+                ? 'Reading your GitHub…'
+                : options.length
+                  ? 'Choose a public repository'
+                  : 'No public repositories found'
+            }
+          />
+        </SelectTrigger>
+        <SelectContent position="popper" className="rounded-none">
+          {options?.map((r) => (
+            <SelectItem key={r.url} value={r.url} className="rounded-none font-mono text-[0.8125rem]">
+              {r.name}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
 
       <div className="flex items-end gap-3">
         <div className="flex-1">
@@ -62,6 +94,7 @@ function AccessionForm({ onAccession }) {
             id="repo-branch"
             value={branch}
             onChange={(e) => setBranch(e.target.value)}
+            placeholder="default"
             spellCheck={false}
             className="h-9 rounded-none border-0 border-b border-rule bg-transparent px-0 font-mono text-[0.8125rem]
                        shadow-none focus-visible:border-primary focus-visible:ring-0 dark:bg-transparent"

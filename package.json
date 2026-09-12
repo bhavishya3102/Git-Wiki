@@ -4,7 +4,7 @@
   "description": "Express server with Inngest and Pinecone",
   "main": "src/index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "node --test 'src/**/*.test.js'",
     "start": "node src/index.js",
     "dev": "node --watch src/index.js",
     "inngest": "npx inngest-cli@latest dev -u http://localhost:3000/api/inngest",
@@ -27,10 +27,13 @@
     "@langchain/core": "^1.2.9",
     "@langchain/openai": "^1.5.11",
     "@langchain/textsplitters": "^1.0.1",
+    "@neondatabase/serverless": "^1.1.0",
     "@pinecone-database/pinecone": "^8.2.0",
+    "cookie-parser": "^1.4.7",
     "dotenv": "^16.6.1",
     "express": "^5.2.1",
     "ignore": "^7.0.9",
-    "inngest": "^4.20.0"
+    "inngest": "^4.20.0",
+    "jsonwebtoken": "^9.0.3"
   }
 }

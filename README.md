@@ -9,6 +9,26 @@ npm install
 cp .env.example .env   # add your PINECONE_API_KEY
 ```
 
+## Sign-in (GitHub OAuth + Neon)
+
+Users sign in with GitHub and can shelve only **their own public repos**.
+
+1. Create a GitHub OAuth App at <https://github.com/settings/developers> with the
+   callback URL `http://localhost:5173/api/auth/github/callback`, and put its
+   `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` in `.env`.
+2. Set `DATABASE_URL` to a Neon connection string. The `users` and `repos`
+   tables are created on first use.
+3. Set `JWT_SECRET` to a long random string (`openssl rand -hex 32`).
+
+The flow: `/auth/github` redirects to GitHub (no scopes requested) →
+GitHub calls back with a `code` → the server trades it for an access token,
+reads the user's profile once, upserts them into Neon, and sets an httpOnly
+`session` JWT cookie. The GitHub token is not stored — public repos are read
+with the server's `GITHUB_TOKEN`.
+
+Every route below except `/health`, `/docs` and the auth routes needs that
+cookie, so the `curl` examples need `-b session=<jwt>` from a signed-in browser.
+
 ## Run
 
 Two terminals:
@@ -24,9 +44,16 @@ npm run inngest   # the Inngest Dev Server on :8288
 | --- | --- |
 | `GET /health` | Liveness check |
 | `POST /docs` | `{ "id", "text" }` — emits a `doc/created` event |
-| `POST /repos` | `{ "url", "branch" }` — emits a `repo/index.requested` event |
-| `GET /search?q=...&topK=3` | Embeds the query and searches Pinecone |
-| `POST /ask` | `{ "question", "repo" }` — answers the question from the indexed repo |
+| `GET /auth/github` | Starts GitHub sign-in |
+| `GET /auth/github/callback` | Saves the user in Neon and sets the `session` cookie |
+| `POST /auth/logout` | Clears the `session` cookie |
+| `GET /me` | The signed-in user |
+| `GET /github/repos` | The signed-in user's public GitHub repos |
+| `GET /repos` | The signed-in user's shelved repos, with `status` (`queued` / `ready`) |
+| `POST /repos` | `{ "url", "branch" }` — shelves one of *your own* public repos and emits `repo/index.requested` |
+| `DELETE /repos?url=...` | Takes a repo off your shelf (its vectors stay in Pinecone) |
+| `GET /search?q=...&topK=3` | Embeds the query and searches Pinecone — only your shelved repos |
+| `POST /ask` | `{ "question", "repo" }` — answers the question from your indexed repos |
 | `/api/inngest` | Where Inngest discovers and runs the functions |
 
 `POST /docs` returns immediately; the `index-document` Inngest function embeds
@@ -55,7 +82,7 @@ curl -X POST localhost:3000/repos -H 'content-type: application/json' \
 curl 'localhost:3000/search?q=hello'
 ```
 
-Set `GITHUB_TOKEN` in `.env` for private repos or to lift the unauthenticated
+Set `GITHUB_TOKEN` in `.env` to lift the unauthenticated
 GitHub rate limit (60 requests/hour, which a mid-size repo will exhaust).
 
 Note: the loader returns every chunk from a single step, and Inngest caps step
@@ -100,8 +127,8 @@ Deploying the UI separately means adding CORS to the API.
 
 Shelve a repository in the left rail, select it, and ask. Every `[n]` in the
 answer is a live reference: hover it and the cited passage lifts in the margin,
-click it and the margin scrolls to it. The catalogue lives in `localStorage`,
-so it is per-browser, not shared.
+click it and the margin scrolls to it. The catalogue lives in Neon, per
+signed-in user; the shelve form lists your public GitHub repos to pick from.
 
 Two API changes came with it:
 

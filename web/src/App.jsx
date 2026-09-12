@@ -1,11 +1,12 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { LogIn } from 'lucide-react';
 import { toast } from 'sonner';
 import { Masthead } from '@/components/Masthead';
 import { CatalogueRail } from '@/components/CatalogueRail';
 import { Composer } from '@/components/Composer';
 import { AnswerPlate } from '@/components/AnswerPlate';
 import { Skeleton } from '@/components/ui/skeleton';
-import { api } from '@/lib/api';
+import { api, LOGIN_URL } from '@/lib/api';
 import { useCatalog } from '@/lib/useCatalog';
 
 function ReadingDesk() {
@@ -55,7 +56,51 @@ function Consulting() {
   );
 }
 
+function SignIn() {
+  return (
+    <div className="min-h-screen">
+      <Masthead />
+
+      <main className="mx-auto max-w-[1400px] px-6 lg:px-10">
+        <div className="animate-rise max-w-[46ch] py-16" style={{ animationDelay: '120ms' }}>
+          <p className="font-display text-[1.9rem] leading-[1.2] tracking-[-0.015em]"
+             style={{ fontStyle: 'italic', fontVariationSettings: "'SOFT' 30, 'WONK' 1" }}>
+            The reading room keeps a register.
+          </p>
+          <p className="mt-4 font-body text-[1.0625rem] leading-relaxed text-muted-foreground">
+            Sign in with GitHub to shelve your public repositories and question them.
+            Only your public profile is read — no access to your repositories is requested.
+          </p>
+          <a
+            href={LOGIN_URL}
+            className="mt-8 inline-flex h-10 items-center gap-2 bg-primary px-5 font-mono text-[0.6875rem]
+                       uppercase tracking-[0.18em] text-primary-foreground transition-transform
+                       hover:bg-primary/90 active:translate-y-px"
+          >
+            <LogIn className="size-3.5" />
+            Sign in with GitHub
+          </a>
+        </div>
+      </main>
+    </div>
+  );
+}
+
 export default function App() {
+  // undefined while checking the session cookie, null when signed out.
+  const [user, setUser] = useState(undefined);
+
+  useEffect(() => {
+    api.me().then(setUser).catch(() => setUser(null));
+  }, []);
+
+  if (user === undefined) return null;
+  if (!user) return <SignIn />;
+
+  return <ReadingRoom user={user} onSignOut={() => api.logout().finally(() => setUser(null))} />;
+}
+
+function ReadingRoom({ user, onSignOut }) {
   const catalogue = useCatalog();
   const [selected, setSelected] = useState(null);
   const [entries, setEntries] = useState([]);
@@ -83,7 +128,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen">
-      <Masthead volumes={catalogue.items.length} />
+      <Masthead volumes={catalogue.items.length} user={user} onSignOut={onSignOut} />
 
       <main className="mx-auto max-w-[1400px] px-6 lg:px-10">
         <div className="grid gap-x-12 gap-y-12 py-10 lg:grid-cols-[18rem_minmax(0,1fr)]">
