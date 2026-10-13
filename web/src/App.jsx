@@ -5,9 +5,12 @@ import { Masthead } from '@/components/Masthead';
 import { CatalogueRail } from '@/components/CatalogueRail';
 import { Composer } from '@/components/Composer';
 import { AnswerPlate } from '@/components/AnswerPlate';
+import { DeskToggle } from '@/components/DeskToggle';
+import { ReviewDesk } from '@/components/ReviewDesk';
 import { Skeleton } from '@/components/ui/skeleton';
 import { api, LOGIN_URL } from '@/lib/api';
 import { useCatalog } from '@/lib/useCatalog';
+import { pickReviewVolume } from '@/lib/desk';
 
 function ReadingDesk() {
   return (
@@ -103,8 +106,18 @@ export default function App() {
 function ReadingRoom({ user, onSignOut }) {
   const catalogue = useCatalog();
   const [selected, setSelected] = useState(null);
+  const [mode, setMode] = useState('ask');
   const [entries, setEntries] = useState([]);
   const [asking, setAsking] = useState(false);
+
+  useEffect(() => {
+    setSelected((cur) => {
+      if (cur) {
+        return catalogue.items.find((item) => item.url === cur.url) ?? cur;
+      }
+      return pickReviewVolume(null, catalogue.items);
+    });
+  }, [catalogue.items]);
 
   async function handleAsk(question) {
     setAsking(true);
@@ -136,20 +149,40 @@ function ReadingRoom({ user, onSignOut }) {
             <CatalogueRail
               catalogue={catalogue}
               selected={selected}
-              onSelect={(repo) => setSelected((cur) => (cur?.url === repo.url ? null : repo))}
+              onSelect={(repo) =>
+                setSelected((cur) =>
+                  mode === 'review' ? repo : cur?.url === repo.url ? null : repo,
+                )
+              }
             />
           </div>
 
           <div className="min-w-0 space-y-12">
-            <Composer repo={selected} busy={asking} onAsk={handleAsk} />
+            <DeskToggle
+              mode={mode}
+              onChange={(next) => {
+                setMode(next);
+                if (next === 'review') {
+                  setSelected((cur) => pickReviewVolume(cur, catalogue.items));
+                }
+              }}
+            />
 
-            {asking && <Consulting />}
+            {mode === 'ask' ? (
+              <>
+                <Composer repo={selected} busy={asking} onAsk={handleAsk} />
 
-            {entries.length === 0 && !asking && <ReadingDesk />}
+                {asking && <Consulting />}
 
-            {entries.map((entry, i) => (
-              <AnswerPlate key={entry.at} entry={entry} muted={i > 0} />
-            ))}
+                {entries.length === 0 && !asking && <ReadingDesk />}
+
+                {entries.map((entry, i) => (
+                  <AnswerPlate key={entry.at} entry={entry} muted={i > 0} />
+                ))}
+              </>
+            ) : (
+              <ReviewDesk key={selected?.url ?? 'none'} repo={selected} />
+            )}
           </div>
         </div>
       </main>

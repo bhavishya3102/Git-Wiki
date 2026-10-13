@@ -1,0 +1,110 @@
+openapi: 3.0.3
+info:
+  title: Git Wiki
+  version: 1.1.0
+  description: Reading-room API plus PR review desk. Contract is documentary — this repo has no codegen.
+paths:
+  /pulls:
+    get:
+      operationId: listPulls
+      security: [{ session: [] }]
+      parameters:
+        - in: query
+          name: url
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Open pull requests, drafts included
+        '400':
+          description: url missing or not a GitHub repo
+        '401':
+          description: not signed in
+        '403':
+          description: repo not on this user's shelf
+        '409':
+          description: shelf not ready
+  /pulls/inspect:
+    get:
+      operationId: inspectPull
+      security: [{ session: [] }]
+      parameters:
+        - in: query
+          name: url
+          required: true
+          schema: { type: string }
+        - in: query
+          name: number
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: PR stats plus every changed file and its unified diff
+        '400':
+          description: url or number missing
+        '401':
+          description: not signed in
+        '403':
+          description: repo not on this user's shelf
+        '404':
+          description: pull request not found
+  /reviews:
+    post:
+      operationId: draftReview
+      security: [{ session: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [url, number]
+              properties:
+                url: { type: string }
+                number: { type: integer }
+      responses:
+        '200':
+          description: Preview only — nothing posted to GitHub
+        '400':
+          description: url or number missing
+        '403':
+          description: repo not on this user's shelf
+        '409':
+          description: shelf not ready
+  /reviews/publish:
+    post:
+      operationId: publishReview
+      security: [{ session: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [url, number, body]
+              properties:
+                url: { type: string }
+                number: { type: integer }
+                body: { type: string }
+                content: { type: string }
+                critical_fixes:
+                  type: array
+                  items: { type: string }
+                suggested_fixes:
+                  type: array
+                  items: { type: string }
+      responses:
+        '201':
+          description: New issue comment created
+        '400':
+          description: url, number, or body missing
+        '403':
+          description: repo not on this user's shelf
+        '409':
+          description: shelf not ready
+components:
+  securitySchemes:
+    session:
+      type: apiKey
+      in: cookie
+      name: session

@@ -4,7 +4,7 @@
   "description": "Express server with Inngest and Pinecone",
   "main": "src/index.js",
   "scripts": {
-    "test": "node --test 'src/**/*.test.js'",
+    "test": "node --test 'src/**/*.test.js' 'web/src/**/*.test.js'",
     "start": "node src/index.js",
     "dev": "node --watch src/index.js",
     "inngest": "npx inngest-cli@latest dev -u http://localhost:3000/api/inngest",

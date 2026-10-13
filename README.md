@@ -54,6 +54,10 @@ npm run inngest   # the Inngest Dev Server on :8288
 | `DELETE /repos?url=...` | Takes a repo off your shelf (its vectors stay in Pinecone) |
 | `GET /search?q=...&topK=3` | Embeds the query and searches Pinecone — only your shelved repos |
 | `POST /ask` | `{ "question", "repo" }` — answers the question from your indexed repos |
+| `GET /pulls?url=` | Open pull requests (drafts included) for a shelved repo |
+| `GET /pulls/inspect?url=&number=` | PR stats plus every changed file and its unified diff |
+| `POST /reviews` | `{ "url", "number" }` — draft a review from wiki vectors; does not comment |
+| `POST /reviews/publish` | `{ "url", "number", "body" }` — post a new PR comment via `GITHUB_TOKEN` |
 | `/api/inngest` | Where Inngest discovers and runs the functions |
 
 `POST /docs` returns immediately; the `index-document` Inngest function embeds

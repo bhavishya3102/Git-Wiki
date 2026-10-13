@@ -1,4 +1,5 @@
 import { neon } from '@neondatabase/serverless';
+import { parseRepoUrl } from './github.js';
 
 let sql;
 let ready;
@@ -65,6 +66,24 @@ export async function saveRepo(userId, { url, owner, name, branch }) {
     ON CONFLICT (url) DO UPDATE
       SET branch = EXCLUDED.branch, status = 'queued'
       WHERE repos.user_id = EXCLUDED.user_id`;
+}
+
+export async function getRepoForUser(userId, url) {
+  const sql = await db();
+  const [repo] = await sql`
+    SELECT url, owner, name, branch, status FROM repos
+    WHERE user_id = ${userId} AND url = ${url}`;
+  if (repo) return repo;
+
+  const parsed = parseRepoUrl(url);
+  if (!parsed) return repo;
+
+  const [named] = await sql`
+    SELECT url, owner, name, branch, status FROM repos
+    WHERE user_id = ${userId}
+      AND lower(owner) = ${parsed.owner.toLowerCase()}
+      AND lower(name) = ${parsed.name.toLowerCase()}`;
+  return named;
 }
 
 export async function listRepos(userId) {

@@ -38,4 +38,15 @@ export const api = {
   // Cheap "has anything landed yet?" check — retrieval only, no model call.
   probe: (repo) =>
     request(`/search?q=overview&topK=1&repo=${encodeURIComponent(repo)}`),
+
+  pulls: (url) => request(`/pulls?url=${encodeURIComponent(url)}`),
+
+  inspectPull: ({ url, number }) =>
+    request(`/pulls/inspect?url=${encodeURIComponent(url)}&number=${number}`),
+
+  draftReview: ({ url, number }) =>
+    request('/reviews', { method: 'POST', body: JSON.stringify({ url, number }) }),
+
+  publishReview: ({ url, number, body }) =>
+    request('/reviews/publish', { method: 'POST', body: JSON.stringify({ url, number, body }) }),
 };

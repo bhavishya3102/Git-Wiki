@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<testsuites>
+	<testcase name="requireAuth lets a valid session through and exposes the user" time="0.005568" classname="test"/>
+	<testcase name="requireAuth rejects a request with no session cookie" time="0.000425" classname="test"/>
+	<testcase name="requireAuth rejects a session signed with another secret" time="0.001098" classname="test"/>
+	<testcase name="parseRepoUrl normalises a GitHub URL" time="0.004548" classname="test"/>
+	<testcase name="parseRepoUrl rejects anything that is not a repo URL" time="0.000495" classname="test"/>
+	<testcase name="ownRepoError accepts a public repo owned by the user" time="0.002004" classname="test"/>
+	<testcase name="ownRepoError rejects a repo owned by someone else" time="0.000441" classname="test"/>
+	<testcase name="ownRepoError rejects a private repo" time="0.000327" classname="test"/>
+	<testcase name="ownRepoError rejects a repo GitHub could not find" time="0.000228" classname="test"/>
+	<testcase name="mapPull keeps draft open PRs and trims the payload for the desk" time="0.000491" classname="test"/>
+	<testcase name="mapPullFile keeps the fields the reviewer needs" time="0.000324" classname="test"/>
+	<testcase name="reviewGate rejects a repo that is not on the shelf" time="0.002723" classname="test"/>
+	<testcase name="reviewGate blocks a repo that is still being indexed" time="0.000294" classname="test"/>
+	<testcase name="reviewGate allows a ready shelved repo" time="0.000237" classname="test"/>
+	<testcase name="retrieveContext prefers same-file chunks then related, and dedupes by id" time="0.001280" classname="test"/>
+	<testcase name="parseReviewJson reads a fenced object from the model" time="0.000482" classname="test"/>
+	<testcase name="formatCommentBody joins sections and notes a truncated review" time="0.000607" classname="test"/>
+	<testcase name="draftReview returns an empty-change note when GitHub lists no files" time="0.000671" classname="test"/>
+	<testcase name="draftReview pages files, reviews once, then stops on a short page" time="0.000896" classname="test"/>
+	<testcase name="handleListPulls rejects a missing url" time="0.002848" classname="test"/>
+	<testcase name="handleListPulls forbids a repo that is not on the shelf" time="0.000649" classname="test"/>
+	<testcase name="handleListPulls conflicts when the shelf is still queued" time="0.000322" classname="test"/>
+	<testcase name="handleListPulls returns open pulls including drafts for a ready shelf" time="0.001605" classname="test"/>
+	<testcase name="handleDraftReview requires a pull number" time="0.000783" classname="test"/>
+	<testcase name="handleDraftReview returns a preview and does not publish" time="0.000766" classname="test"/>
+	<testcase name="handlePublishReview posts the supplied body as a new comment" time="0.000741" classname="test"/>
+	<testcase name="reviewBlockReason asks the reader to pick a volume" time="0.001378" classname="test"/>
+	<testcase name="reviewBlockReason blocks a volume still in the bindery" time="0.000288" classname="test"/>
+	<testcase name="reviewBlockReason is empty once the volume is shelved" time="0.000301" classname="test"/>
+	<!-- tests 29 -->
+	<!-- suites 0 -->
+	<!-- pass 29 -->
+	<!-- fail 0 -->
+	<!-- cancelled 0 -->
+	<!-- skipped 0 -->
+	<!-- todo 0 -->
+	<!-- duration_ms 1839.403931 -->
+</testsuites>

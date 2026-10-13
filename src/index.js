@@ -7,11 +7,14 @@ import { functions } from './inngest/functions.js';
 import { search } from './pinecone.js';
 import { ask } from './rag.js';
 import { authRouter, requireAuth } from './auth.js';
-import { listRepos, removeRepo, saveRepo } from './db.js';
+import { getRepoForUser, listRepos, removeRepo, saveRepo } from './db.js';
 import { getRepo, listPublicRepos, ownRepoError, parseRepoUrl } from './github.js';
+import { handleDraftReview, handleInspectPull, handleListPulls, handlePublishReview } from './reviews-http.js';
 
 const app = express();
-app.use(express.json());
+// Inngest posts step output back to this server. load-and-split for a
+// mid-size repo is ~150kb; Express's 100kb default 413s the job as 500.
+app.use(express.json({ limit: '4mb' }));
 app.use(cookieParser());
 app.use(authRouter);
 
@@ -102,6 +105,71 @@ app.post('/ask', requireAuth, async (req, res, next) => {
     const filter = await repoFilter(req.user.id, repo);
     if (!filter) return res.status(403).json({ error: 'Shelve that repository first' });
     res.json(await ask(question, { filter }));
+  } catch (err) {
+    next(err);
+  }
+});
+
+function shelfLookup(userId) {
+  return (url) => getRepoForUser(userId, url);
+}
+
+function send(res, result) {
+  res.status(result.status).json(result.body);
+}
+
+app.get('/pulls/inspect', requireAuth, async (req, res, next) => {
+  try {
+    send(
+      res,
+      await handleInspectPull({
+        url: req.query.url,
+        number: req.query.number,
+        getRepoForUser: shelfLookup(req.user.id),
+      }),
+    );
+  } catch (err) {
+    next(err);
+  }
+});
+
+app.get('/pulls', requireAuth, async (req, res, next) => {
+  try {
+    send(
+      res,
+      await handleListPulls({
+        url: req.query.url,
+        getRepoForUser: shelfLookup(req.user.id),
+      }),
+    );
+  } catch (err) {
+    next(err);
+  }
+});
+
+app.post('/reviews', requireAuth, async (req, res, next) => {
+  try {
+    send(
+      res,
+      await handleDraftReview({
+        ...(req.body ?? {}),
+        getRepoForUser: shelfLookup(req.user.id),
+      }),
+    );
+  } catch (err) {
+    next(err);
+  }
+});
+
+app.post('/reviews/publish', requireAuth, async (req, res, next) => {
+  try {
+    send(
+      res,
+      await handlePublishReview({
+        ...(req.body ?? {}),
+        getRepoForUser: shelfLookup(req.user.id),
+      }),
+    );
   } catch (err) {
     next(err);
   }
