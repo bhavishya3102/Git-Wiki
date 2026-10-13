@@ -1,0 +1,42 @@
+# Render blueprint for the git-wiki Express API.
+# The Vite frontend is deployed separately on Vercel, which proxies /api/*
+# here (see web/vercel.json) so the browser stays on a single origin.
+services:
+  - type: web
+    name: git-wiki-api
+    runtime: node
+    plan: free
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      # secure session cookies in src/auth.js key off this
+      - key: NODE_ENV
+        value: production
+      - key: PINECONE_INDEX
+        value: git-wiki
+      - key: OPENAI_MODEL
+        value: gpt-4o-mini
+      # Set in the Render dashboard — never committed. INNGEST_DEV is
+      # deliberately absent: its presence would keep the dev transport on.
+      - key: PINECONE_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: GITHUB_CLIENT_ID
+        sync: false
+      - key: GITHUB_CLIENT_SECRET
+        sync: false
+      # https://<your-vercel-app>/api/auth/github/callback
+      - key: GITHUB_CALLBACK_URL
+        sync: false
+      - key: GITHUB_TOKEN
+        sync: false
+      - key: INNGEST_EVENT_KEY
+        sync: false
+      - key: INNGEST_SIGNING_KEY
+        sync: false
