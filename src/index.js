@@ -41,9 +41,15 @@ async function repoFilter(userId, repo) {
 // token has the `repo` scope; falls back to public-only otherwise.
 app.get('/github/repos', requireAuth, async (req, res) => {
   const token = await getUserToken(req.user.id);
-  const repos = token
-    ? ((await listUserRepos(req.user.login, token)) ?? [])
-    : ((await listPublicRepos(req.user.login)) ?? []);
+  let repos;
+  if (token) {
+    try {
+      repos = await listUserRepos(req.user.login, token);
+    } catch {
+      // Token expired/revoked — fall through to public listing.
+    }
+  }
+  repos ??= (await listPublicRepos(req.user.login)) ?? [];
   res.json({
     repos: repos.map((r) => ({
       owner: r.owner.login,
