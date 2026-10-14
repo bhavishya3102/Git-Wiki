@@ -46,6 +46,9 @@ async function createTables() {
 // Keyed on the GitHub id, so a renamed account keeps its row.
 export async function upsertUser(profile, { token, scopes } = {}) {
   const sql = await db();
+  if (token && !process.env.TOKEN_ENC_KEY) {
+    console.warn('⚠️  TOKEN_ENC_KEY is not set — the GitHub token will NOT be stored. Set it in your environment.');
+  }
   const encToken = token && process.env.TOKEN_ENC_KEY
     ? encrypt(token, process.env.TOKEN_ENC_KEY)
     : null;

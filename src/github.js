@@ -77,7 +77,7 @@ async function gh(path, { token = process.env.GITHUB_TOKEN, method = 'GET', body
     },
     ...(body && { body: JSON.stringify(body) }),
   });
-  if (res.status === 404 || res.status === 401) return null;
+  if (res.status === 404 || res.status === 401 || res.status === 403) return null;
   if (!res.ok) throw new Error(`GitHub ${path} failed (${res.status})`);
   if (res.status === 204) return null;
   return res.json();
