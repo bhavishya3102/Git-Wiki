@@ -1,5 +1,6 @@
 import { neon } from '@neondatabase/serverless';
 import { parseRepoUrl } from './github.js';
+import { encrypt, decrypt } from './crypto.js';
 
 let sql;
 let ready;
@@ -37,24 +38,42 @@ async function createTables() {
       status     TEXT NOT NULL DEFAULT 'queued',
       created_at TIMESTAMPTZ NOT NULL DEFAULT now()
     )`;
+  // Token columns — added after the initial schema, so ALTER not CREATE.
+  await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS github_token_enc TEXT`;
+  await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS token_scopes TEXT`;
 }
 
 // Keyed on the GitHub id, so a renamed account keeps its row.
-export async function upsertUser(profile) {
+export async function upsertUser(profile, { token, scopes } = {}) {
   const sql = await db();
+  const encToken = token && process.env.TOKEN_ENC_KEY
+    ? encrypt(token, process.env.TOKEN_ENC_KEY)
+    : null;
+  const scopeStr = scopes ?? null;
   const [user] = await sql`
-    INSERT INTO users (github_id, login, name, avatar_url)
-    VALUES (${profile.id}, ${profile.login}, ${profile.name}, ${profile.avatar_url})
+    INSERT INTO users (github_id, login, name, avatar_url, github_token_enc, token_scopes)
+    VALUES (${profile.id}, ${profile.login}, ${profile.name}, ${profile.avatar_url},
+            ${encToken}, ${scopeStr})
     ON CONFLICT (github_id) DO UPDATE
-      SET login = EXCLUDED.login, name = EXCLUDED.name, avatar_url = EXCLUDED.avatar_url
-    RETURNING id, login, name, avatar_url`;
+      SET login = EXCLUDED.login, name = EXCLUDED.name, avatar_url = EXCLUDED.avatar_url,
+          github_token_enc = COALESCE(EXCLUDED.github_token_enc, users.github_token_enc),
+          token_scopes = COALESCE(EXCLUDED.token_scopes, users.token_scopes)
+    RETURNING id, login, name, avatar_url, token_scopes`;
   return user;
 }
 
 export async function getUser(id) {
   const sql = await db();
-  const [user] = await sql`SELECT id, login, name, avatar_url FROM users WHERE id = ${id}`;
+  const [user] = await sql`SELECT id, login, name, avatar_url, token_scopes FROM users WHERE id = ${id}`;
   return user;
+}
+
+// Decrypts and returns the user's stored GitHub token; null if missing.
+export async function getUserToken(userId) {
+  const sql = await db();
+  const [row] = await sql`SELECT github_token_enc FROM users WHERE id = ${userId}`;
+  if (!row?.github_token_enc || !process.env.TOKEN_ENC_KEY) return null;
+  return decrypt(row.github_token_enc, process.env.TOKEN_ENC_KEY);
 }
 
 // Re-adding a repo resets it to queued, which is also how a failed index is retried.

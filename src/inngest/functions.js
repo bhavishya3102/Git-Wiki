@@ -2,7 +2,7 @@ import { GithubRepoLoader } from '@langchain/community/document_loaders/web/gith
 import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
 import { inngest } from './client.js';
 import { upsertText, upsertChunks } from '../pinecone.js';
-import { markRepoReady } from '../db.js';
+import { getUserToken, markRepoReady } from '../db.js';
 
 // Triggered by `doc/created` events; indexes the document in Pinecone.
 export const indexDocument = inngest.createFunction(
@@ -33,14 +33,25 @@ const UPSERT_BATCH = 50;
 export const indexRepo = inngest.createFunction(
   { id: 'index-repo', triggers: [{ event: 'repo/index.requested' }] },
   async ({ event, step }) => {
-    const { url, branch = 'main' } = event.data;
+    const { url, branch = 'main', userId } = event.data;
+
+    // Decrypt the user's token inside the step — the raw token never rides
+    // in the Inngest event payload, only the userId.
+    const accessToken = await step.run('resolve-token', async () => {
+      if (userId) {
+        const userToken = await getUserToken(userId);
+        if (userToken) return userToken;
+      }
+      // Fallback: server-level token (for repos indexed before per-user tokens).
+      return process.env.GITHUB_TOKEN ?? null;
+    });
 
     const chunks = await step.run('load-and-split', async () => {
       const loader = new GithubRepoLoader(url, {
         branch,
         recursive: true,
         unknown: 'warn', // skip binaries instead of throwing
-        accessToken: process.env.GITHUB_TOKEN,
+        accessToken,
         ignorePaths: IGNORE_PATHS,
         maxConcurrency: 3,
       });

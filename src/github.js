@@ -9,10 +9,9 @@ export function parseRepoUrl(input) {
 }
 
 // Why a repo can't be added, or null when it can: users may only add their
-// own public repos.
+// own repos (public or private).
 export function ownRepoError(login, repo) {
   if (!repo) return 'Repository not found on GitHub.';
-  if (repo.private) return 'Only public repositories can be added.';
   if (repo.owner.login.toLowerCase() !== login.toLowerCase()) {
     return 'You can only add your own repositories.';
   }
@@ -84,41 +83,48 @@ async function gh(path, { token = process.env.GITHUB_TOKEN, method = 'GET', body
   return res.json();
 }
 
-export const getRepo = (owner, name) => gh(`/repos/${owner}/${name}`);
+export const getRepo = (owner, name, token) =>
+  gh(`/repos/${owner}/${name}`, { token });
 
-export async function listOpenPulls(owner, name) {
-  const pulls = (await gh(`/repos/${owner}/${name}/pulls?state=open&per_page=100`)) ?? [];
+export async function listOpenPulls(owner, name, token) {
+  const pulls = (await gh(`/repos/${owner}/${name}/pulls?state=open&per_page=100`, { token })) ?? [];
   return pulls.map(mapPull);
 }
 
-export async function getPull(owner, name, number) {
-  const pull = await gh(`/repos/${owner}/${name}/pulls/${number}`);
+export async function getPull(owner, name, number, token) {
+  const pull = await gh(`/repos/${owner}/${name}/pulls/${number}`, { token });
   return pull && mapPull({ ...pull, html_url: pull.html_url });
 }
 
-export async function getPullDetail(owner, name, number) {
-  const pull = await gh(`/repos/${owner}/${name}/pulls/${number}`);
+export async function getPullDetail(owner, name, number, token) {
+  const pull = await gh(`/repos/${owner}/${name}/pulls/${number}`, { token });
   return pull && mapPullDetail(pull);
 }
 
-export async function listPullFiles(owner, name, number, page = 1, perPage = 20) {
+export async function listPullFiles(owner, name, number, page = 1, perPage = 20, token) {
   const files =
-    (await gh(`/repos/${owner}/${name}/pulls/${number}/files?per_page=${perPage}&page=${page}`)) ?? [];
+    (await gh(`/repos/${owner}/${name}/pulls/${number}/files?per_page=${perPage}&page=${page}`, { token })) ?? [];
   return files.map(mapPullFile);
 }
 
-export async function createIssueComment(owner, name, number, body) {
+export async function createIssueComment(owner, name, number, body, token) {
   return gh(`/repos/${owner}/${name}/issues/${number}/comments`, {
+    token,
     method: 'POST',
     body: { body },
   });
 }
 
+// Lists both public and private repos when called with the user's own token.
+export const listUserRepos = (login, token) =>
+  gh(`/user/repos?type=owner&sort=updated&per_page=100&affiliation=owner`, { token });
+
+// Fallback for unauthenticated listing (public repos only).
 export const listPublicRepos = (login) =>
   gh(`/users/${login}/repos?type=owner&sort=updated&per_page=100`);
 
-// Trades the OAuth callback code for the user's profile. The access token is
-// used once here and never stored — public repos don't need it again.
+// Trades the OAuth callback code for the user's profile, token and granted
+// scopes. The token is stored encrypted in the DB for per-user API calls.
 export async function fetchUserFromCode(code, redirectUri) {
   const res = await fetch('https://github.com/login/oauth/access_token', {
     method: 'POST',
@@ -130,7 +136,8 @@ export async function fetchUserFromCode(code, redirectUri) {
       redirect_uri: redirectUri,
     }),
   });
-  const { access_token, error_description } = await res.json();
+  const { access_token, scope, error_description } = await res.json();
   if (!access_token) throw new Error(error_description || 'GitHub did not return an access token');
-  return gh('/user', { token: access_token });
+  const profile = await gh('/user', { token: access_token });
+  return { profile, token: access_token, scopes: scope ?? '' };
 }

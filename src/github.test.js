@@ -24,8 +24,8 @@ test('ownRepoError rejects a repo owned by someone else', () => {
   assert.match(ownRepoError('octocat', { private: false, owner: { login: 'facebook' } }), /your own/);
 });
 
-test('ownRepoError rejects a private repo', () => {
-  assert.match(ownRepoError('octocat', { private: true, owner: { login: 'octocat' } }), /public/);
+test('ownRepoError accepts a private repo owned by the user', () => {
+  assert.equal(ownRepoError('octocat', { private: true, owner: { login: 'octocat' } }), null);
 });
 
 test('ownRepoError rejects a repo GitHub could not find', () => {

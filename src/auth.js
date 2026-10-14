@@ -40,8 +40,9 @@ export function requireAuth(req, res, next) {
 
 export const authRouter = Router();
 
-// Step 1: send the browser to GitHub. No scope is requested — the public
-// profile is all we need. `state` guards the callback against forgery.
+// Step 1: send the browser to GitHub. `repo` scope gives read/write to
+// the user's public and private repos — needed for private indexing and
+// posting PR review comments under their own name.
 authRouter.get('/auth/github', (req, res) => {
   if (!process.env.GITHUB_CLIENT_ID) {
     return res.status(500).json({ error: 'GITHUB_CLIENT_ID is not set' });
@@ -52,6 +53,7 @@ authRouter.get('/auth/github', (req, res) => {
   const params = new URLSearchParams({
     client_id: process.env.GITHUB_CLIENT_ID,
     redirect_uri: CALLBACK_URL,
+    scope: 'repo',
     state,
   });
   res.redirect(`https://github.com/login/oauth/authorize?${params}`);
@@ -65,11 +67,26 @@ authRouter.get('/auth/github/callback', async (req, res) => {
     return res.status(400).json({ error: 'Sign-in expired or was tampered with — try again' });
   }
 
-  const user = await upsertUser(await fetchUserFromCode(code, CALLBACK_URL));
+  const { profile, token, scopes } = await fetchUserFromCode(code, CALLBACK_URL);
+  const user = await upsertUser(profile, { token, scopes });
   res.clearCookie(STATE_COOKIE, cookieOptions);
   res.cookie(SESSION_COOKIE, signSession(user), { ...cookieOptions, maxAge: WEEK });
   res.redirect('/');
 });
+
+// Checks that the user's stored scopes include a required one; returns 403
+// with a re-auth hint otherwise. Use after requireAuth.
+export function requireScope(scope) {
+  return async (req, res, next) => {
+    const user = await getUser(req.user.id);
+    const scopes = (user?.token_scopes ?? '').split(',').map((s) => s.trim());
+    if (scopes.includes(scope)) return next();
+    res.status(403).json({
+      error: `This action requires the "${scope}" scope. Please sign in again.`,
+      reauth: true,
+    });
+  };
+}
 
 authRouter.get('/me', requireAuth, async (req, res) => {
   const user = await getUser(req.user.id);

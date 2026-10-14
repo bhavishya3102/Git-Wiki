@@ -29,19 +29,21 @@ async function loadOnShelf(url, getRepoForUser, { requireReady = false } = {}) {
 
 export async function handleListPulls({
   url,
+  token,
   getRepoForUser = dbGetRepoForUser,
   listOpenPulls = ghListOpenPulls,
 } = {}) {
   const loaded = await loadOnShelf(url, getRepoForUser);
   if (loaded.error) return loaded.error;
 
-  const pulls = await listOpenPulls(loaded.repo.owner, loaded.repo.name);
+  const pulls = await listOpenPulls(loaded.repo.owner, loaded.repo.name, token);
   return { status: 200, body: { pulls } };
 }
 
 export async function handleInspectPull({
   url,
   number,
+  token,
   getRepoForUser = dbGetRepoForUser,
   getPullDetail = ghGetPullDetail,
   listPullFiles = ghListPullFiles,
@@ -51,12 +53,12 @@ export async function handleInspectPull({
   const loaded = await loadOnShelf(url, getRepoForUser);
   if (loaded.error) return loaded.error;
 
-  const pull = await getPullDetail(loaded.repo.owner, loaded.repo.name, Number(number));
+  const pull = await getPullDetail(loaded.repo.owner, loaded.repo.name, Number(number), token);
   if (!pull) return fail(404, 'Pull request not found');
 
   const files = await collectAllPullFiles(
     (page, perPage) =>
-      listPullFiles(loaded.repo.owner, loaded.repo.name, Number(number), page, perPage),
+      listPullFiles(loaded.repo.owner, loaded.repo.name, Number(number), page, perPage, token),
     { perPage: 100 },
   );
 
@@ -66,6 +68,7 @@ export async function handleInspectPull({
 export async function handleDraftReview({
   url,
   number,
+  token,
   getRepoForUser = dbGetRepoForUser,
   getPullDetail = ghGetPullDetail,
   listPullFiles = ghListPullFiles,
@@ -76,7 +79,7 @@ export async function handleDraftReview({
   const loaded = await loadOnShelf(url, getRepoForUser, { requireReady: true });
   if (loaded.error) return loaded.error;
 
-  const pr = await getPullDetail(loaded.repo.owner, loaded.repo.name, Number(number));
+  const pr = await getPullDetail(loaded.repo.owner, loaded.repo.name, Number(number), token);
   if (!pr) return fail(404, 'Pull request not found');
   if (pr.state !== 'open') return fail(409, 'PR is not open');
 
@@ -84,7 +87,7 @@ export async function handleDraftReview({
     repoUrl: loaded.repo.url,
     pr,
     listFiles: (page, perPage) =>
-      listPullFiles(loaded.repo.owner, loaded.repo.name, Number(number), page, perPage),
+      listPullFiles(loaded.repo.owner, loaded.repo.name, Number(number), page, perPage, token),
   });
 
   return { status: 200, body: { ...preview, number: Number(number), repo: loaded.repo.url } };
@@ -97,6 +100,7 @@ export async function handlePublishReview({
   content,
   critical_fixes,
   suggested_fixes,
+  token,
   getRepoForUser = dbGetRepoForUser,
   createIssueComment = ghCreateComment,
 } = {}) {
@@ -119,6 +123,7 @@ export async function handlePublishReview({
     loaded.repo.name,
     Number(number),
     commentBody,
+    token,
   );
 
   return {

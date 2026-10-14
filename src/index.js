@@ -7,8 +7,8 @@ import { functions } from './inngest/functions.js';
 import { search } from './pinecone.js';
 import { ask } from './rag.js';
 import { authRouter, requireAuth } from './auth.js';
-import { getRepoForUser, listRepos, removeRepo, saveRepo } from './db.js';
-import { getRepo, listPublicRepos, ownRepoError, parseRepoUrl } from './github.js';
+import { getRepoForUser, getUserToken, listRepos, removeRepo, saveRepo } from './db.js';
+import { getRepo, listPublicRepos, listUserRepos, ownRepoError, parseRepoUrl } from './github.js';
 import { handleDraftReview, handleInspectPull, handleListPulls, handlePublishReview } from './reviews-http.js';
 
 const app = express();
@@ -37,15 +37,20 @@ async function repoFilter(userId, repo) {
   return urls.length ? { repo: { $in: urls } } : null;
 }
 
-// The signed-in user's public GitHub repos — the only ones they may shelve.
+// The signed-in user's GitHub repos — public + private when their stored
+// token has the `repo` scope; falls back to public-only otherwise.
 app.get('/github/repos', requireAuth, async (req, res) => {
-  const repos = (await listPublicRepos(req.user.login)) ?? [];
+  const token = await getUserToken(req.user.id);
+  const repos = token
+    ? ((await listUserRepos(req.user.login, token)) ?? [])
+    : ((await listPublicRepos(req.user.login)) ?? []);
   res.json({
     repos: repos.map((r) => ({
       owner: r.owner.login,
       name: r.name,
       url: r.html_url,
       branch: r.default_branch,
+      private: r.private,
     })),
   });
 });
@@ -54,13 +59,14 @@ app.get('/repos', requireAuth, async (req, res) => {
   res.json({ repos: await listRepos(req.user.id) });
 });
 
-// Shelve one of the user's own public repos and index it in the background.
+// Shelve one of the user's own repos (public or private) and index it.
 app.post('/repos', requireAuth, async (req, res) => {
   const { url, branch } = req.body ?? {};
   const parsed = url && parseRepoUrl(url);
   if (!parsed) return res.status(400).json({ error: 'a GitHub repository url is required' });
 
-  const meta = await getRepo(parsed.owner, parsed.name);
+  const token = await getUserToken(req.user.id);
+  const meta = await getRepo(parsed.owner, parsed.name, token);
   const error = ownRepoError(req.user.login, meta);
   if (error) return res.status(403).json({ error });
 
@@ -72,7 +78,12 @@ app.post('/repos', requireAuth, async (req, res) => {
     branch: branch || meta.default_branch,
   };
   await saveRepo(req.user.id, repo);
-  await inngest.send({ name: 'repo/index.requested', data: { url: repo.url, branch: repo.branch } });
+  // userId in the payload so the Inngest function can decrypt the user's
+  // token from the DB — the raw token never rides in the event.
+  await inngest.send({
+    name: 'repo/index.requested',
+    data: { url: repo.url, branch: repo.branch, userId: req.user.id },
+  });
   res.status(202).json({ queued: repo.url, repo: { ...repo, status: 'queued' } });
 });
 
@@ -120,11 +131,13 @@ function send(res, result) {
 
 app.get('/pulls/inspect', requireAuth, async (req, res, next) => {
   try {
+    const token = await getUserToken(req.user.id);
     send(
       res,
       await handleInspectPull({
         url: req.query.url,
         number: req.query.number,
+        token,
         getRepoForUser: shelfLookup(req.user.id),
       }),
     );
@@ -135,10 +148,12 @@ app.get('/pulls/inspect', requireAuth, async (req, res, next) => {
 
 app.get('/pulls', requireAuth, async (req, res, next) => {
   try {
+    const token = await getUserToken(req.user.id);
     send(
       res,
       await handleListPulls({
         url: req.query.url,
+        token,
         getRepoForUser: shelfLookup(req.user.id),
       }),
     );
@@ -149,10 +164,12 @@ app.get('/pulls', requireAuth, async (req, res, next) => {
 
 app.post('/reviews', requireAuth, async (req, res, next) => {
   try {
+    const token = await getUserToken(req.user.id);
     send(
       res,
       await handleDraftReview({
         ...(req.body ?? {}),
+        token,
         getRepoForUser: shelfLookup(req.user.id),
       }),
     );
@@ -163,10 +180,12 @@ app.post('/reviews', requireAuth, async (req, res, next) => {
 
 app.post('/reviews/publish', requireAuth, async (req, res, next) => {
   try {
+    const token = await getUserToken(req.user.id);
     send(
       res,
       await handlePublishReview({
         ...(req.body ?? {}),
+        token,
         getRepoForUser: shelfLookup(req.user.id),
       }),
     );
