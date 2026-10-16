@@ -76,7 +76,12 @@ export async function getUserToken(userId) {
   const sql = await db();
   const [row] = await sql`SELECT github_token_enc FROM users WHERE id = ${userId}`;
   if (!row?.github_token_enc || !process.env.TOKEN_ENC_KEY) return null;
-  return decrypt(row.github_token_enc, process.env.TOKEN_ENC_KEY);
+  try {
+    return decrypt(row.github_token_enc, process.env.TOKEN_ENC_KEY);
+  } catch {
+    console.warn(`⚠️  Failed to decrypt token for user ${userId} — TOKEN_ENC_KEY may have been rotated`);
+    return null;
+  }
 }
 
 // Re-adding a repo resets it to queued, which is also how a failed index is retried.

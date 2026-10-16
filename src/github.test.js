@@ -1,6 +1,15 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseRepoUrl, ownRepoError, mapPull, mapPullDetail, mapPullFile, collectAllPullFiles } from './github.js';
+import {
+  parseRepoUrl,
+  ownRepoError,
+  mapPull,
+  mapPullDetail,
+  mapPullFile,
+  collectAllPullFiles,
+  USER_REPOS_PATH,
+  publicReposPath,
+} from './github.js';
 
 test('parseRepoUrl normalises a GitHub URL', () => {
   assert.deepEqual(parseRepoUrl('https://github.com/octocat/Hello-World.git/'), {
@@ -127,5 +136,17 @@ test('mapPullFile keeps the fields the reviewer needs', () => {
       patch: '+x',
       previous_filename: null,
     },
+  );
+});
+
+test('USER_REPOS_PATH does not combine type with affiliation (GitHub 422)', () => {
+  assert.match(USER_REPOS_PATH, /affiliation=owner/);
+  assert.doesNotMatch(USER_REPOS_PATH, /[?&]type=/);
+});
+
+test('publicReposPath lists a user public repos by type=owner only', () => {
+  assert.equal(
+    publicReposPath('octocat'),
+    '/users/octocat/repos?type=owner&sort=updated&per_page=100',
   );
 });

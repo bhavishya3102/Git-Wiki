@@ -40,3 +40,5 @@ services:
         sync: false
       - key: INNGEST_SIGNING_KEY
         sync: false
+      - key: TOKEN_ENC_KEY
+        sync: false

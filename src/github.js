@@ -77,7 +77,12 @@ async function gh(path, { token = process.env.GITHUB_TOKEN, method = 'GET', body
     },
     ...(body && { body: JSON.stringify(body) }),
   });
-  if (res.status === 404 || res.status === 401 || res.status === 403) return null;
+  if (res.status === 404) return null;
+  if (res.status === 401 || res.status === 403) {
+    const remaining = res.headers.get('x-ratelimit-remaining');
+    console.warn(`GitHub ${path} → ${res.status} (rate-limit remaining: ${remaining})`);
+    return null;
+  }
   if (!res.ok) throw new Error(`GitHub ${path} failed (${res.status})`);
   if (res.status === 204) return null;
   return res.json();
@@ -115,13 +120,20 @@ export async function createIssueComment(owner, name, number, body, token) {
   });
 }
 
-// Lists both public and private repos when called with the user's own token.
-export const listUserRepos = (login, token) =>
-  gh(`/user/repos?type=owner&sort=updated&per_page=100&affiliation=owner`, { token });
+// Lists both public and private repos owned by the authenticated user.
+// Do NOT combine `type` with `affiliation`/`visibility` — GitHub returns 422
+// when those are used together (they are mutually exclusive).
+export const USER_REPOS_PATH = '/user/repos?affiliation=owner&sort=updated&per_page=100';
 
-// Fallback for unauthenticated listing (public repos only).
-export const listPublicRepos = (login) =>
-  gh(`/users/${login}/repos?type=owner&sort=updated&per_page=100`);
+export const listUserRepos = (_login, token) => gh(USER_REPOS_PATH, { token });
+
+export function publicReposPath(login) {
+  return `/users/${encodeURIComponent(login)}/repos?type=owner&sort=updated&per_page=100`;
+}
+
+// Public-only listing. Pass a token (user or server) when available so Render's
+// shared IP does not burn the unauthenticated 60/hour GitHub rate limit.
+export const listPublicRepos = (login, token) => gh(publicReposPath(login), { token });
 
 // Trades the OAuth callback code for the user's profile, token and granted
 // scopes. The token is stored encrypted in the DB for per-user API calls.

@@ -45,11 +45,22 @@ app.get('/github/repos', requireAuth, async (req, res) => {
   if (token) {
     try {
       repos = await listUserRepos(req.user.login, token);
-    } catch {
-      // Token expired/revoked — fall through to public listing.
+    } catch (err) {
+      console.warn(`listUserRepos failed for ${req.user.login}: ${err.message}`);
+    }
+  } else {
+    console.warn(`No stored token for user ${req.user.login} (id=${req.user.id})`);
+  }
+  // Always prefer the user's OAuth token on the fallback too — otherwise a
+  // shared Render IP hits GitHub's unauthenticated 60/hr limit and every
+  // account sees an empty dropdown.
+  if (!repos) {
+    repos = await listPublicRepos(req.user.login, token);
+    if (!repos) {
+      console.warn(`listPublicRepos also returned null for ${req.user.login} — possible rate limit`);
+      repos = [];
     }
   }
-  repos ??= (await listPublicRepos(req.user.login)) ?? [];
   res.json({
     repos: repos.map((r) => ({
       owner: r.owner.login,
